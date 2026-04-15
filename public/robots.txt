@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /edit
+Disallow: /message
+Disallow: /api
+Disallow: /zh-cn
+Disallow: /ja-jp
+Disallow: /zh-tw

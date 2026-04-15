@@ -1,0 +1,70 @@
+import type { GalgameOfficialItem } from './galgame-official'
+import type { GalgameSeries } from './galgame-series'
+
+export interface GalgameRatingGalgameInfo {
+  id: number
+  name: KunLanguage
+  contentLimit: string
+  official: GalgameOfficialItem[]
+  ageLimit: string
+  originalLanguage: string
+  banner: string
+  // rating overall average
+  rating: number
+  ratingCount: number
+}
+
+export interface GalgameRatingCard {
+  id: number
+  user: KunUser
+  recommend: string
+  overall: number
+  view: number
+  galgameType: string[]
+  play_status: string
+
+  art: number
+  story: number
+  music: number
+  character: number
+  route: number
+  system: number
+  voice: number
+  replay_value: number
+  spoiler_level: string
+
+  likeCount: number
+  created: Date | string
+  updated: Date | string
+
+  galgame: {
+    id: number
+    name: KunLanguage
+    contentLimit: string
+  }
+}
+
+export interface GalgameRatingComment {
+  id: number
+  content: string
+  user: KunUser
+  targetUser: KunUser | null
+
+  created: Date | string
+  updated: Date | string
+}
+
+export interface GalgameRatingDetails extends GalgameRatingCard {
+  short_summary: string
+
+  isLiked: boolean
+  likedUsers: KunUser[]
+  comments: GalgameRatingComment[]
+  galgame: GalgameRatingGalgameInfo
+  galgameSeries: GalgameSeries | null
+}
+
+export interface GalgameRatingCardOnGalgamePage extends GalgameRatingCard {
+  short_summary: string
+  isLiked: boolean
+}

@@ -1,0 +1,19 @@
+model galgame_pr {
+  id             Int       @id @default(autoincrement())
+  // 0 - pending, 1 - merged, 2 - declined
+  status         Int       @default(0)
+  index          Int       @default(0)
+  note           String    @default("") @db.VarChar(1007)
+  completed_time DateTime?
+  // SQL Server 下 Prisma 不支持 Json 类型：改为 NVARCHAR(MAX) 存 JSON 字符串
+  old_data       String?   @db.NVarChar(Max)
+  new_data       String?   @db.NVarChar(Max)
+
+  user_id    Int
+  user       user    @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  galgame_id Int
+  galgame    galgame @relation(fields: [galgame_id], references: [id], onDelete: Cascade)
+
+  created DateTime @default(now())
+  updated DateTime @updatedAt
+}
