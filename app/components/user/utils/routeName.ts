@@ -35,23 +35,6 @@ export const navBarRoute: Ref<Nav[]> = ref([
     router: 'topic'
   },
   {
-    name: 'galgame',
-    permission: [1, 2, 3, 4],
-    redirect: 'galgame/galgame',
-    router: 'galgame'
-  },
-  {
-    name: 'rating',
-    router: 'rating',
-    permission: [1, 2, 3, 4]
-  },
-  {
-    name: 'resource',
-    permission: [1, 2, 3, 4],
-    redirect: 'resource/valid',
-    router: 'resource'
-  },
-  {
     name: 'reply',
     router: 'reply',
     redirect: 'reply/reply-created',

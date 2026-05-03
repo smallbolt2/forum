@@ -11,7 +11,7 @@ const handleChangeUsername = async () => {
     return
   }
 
-  const res = await message.alert('您确定更改用户名吗？这将会消耗您 17 萌萌点')
+  const res = await message.alert('您确定更改用户名吗？')
   if (!res) {
     return
   }
@@ -35,7 +35,7 @@ const handleChangeUsername = async () => {
     <div>
       <span>更改用户名</span>
       <p class="text-default-500 text-sm">
-        用户名为 1~17 位任意字符, 用户名不可重复，更改用户名将会消耗您 17 萌萌点
+        用户名为 1~17 位任意字符, 用户名不可重复
       </p>
     </div>
 

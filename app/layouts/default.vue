@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import KunLayoutSidebar from '~/components/kun/layout/Sidebar.vue'
+import KunTopBar from '~/components/kun/top-bar/TopBar.vue'
 import {
   ENABLE_KUN_VISUAL_NOVEL_FORUM_WINTER_THEME,
   KUN_VISUAL_NOVEL_FORUM_WINTER_THEME_BACKGROUND
@@ -49,8 +51,11 @@ const { showKUNGalgameSidebarCollapsed } = storeToRefs(
       <div
         :class="
           cn(
-            'z-10 w-full max-w-7xl min-w-0 transition-all duration-300 md:mr-3',
-            showKUNGalgameSidebarCollapsed ? 'md:ml-[84px]' : 'md:ml-66'
+            // 原 max-w-7xl(1280px) 偏窄；与顶栏共用宽幅，大屏更接近鲲式三栏比例
+            'z-10 w-full max-w-[min(100%,100rem)] min-w-0 transition-all duration-300 md:mr-3',
+            showKUNGalgameSidebarCollapsed
+              ? 'kun-main-ms-collapsed'
+              : 'kun-main-ms-expanded'
           )
         "
       >

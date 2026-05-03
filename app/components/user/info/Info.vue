@@ -12,12 +12,7 @@ const statsBlocks = [
   { key: 'topic', label: '话题' },
   { key: 'replyCreated', label: '回复' },
   { key: 'commentCreated', label: '评论' },
-  { key: 'galgame', label: 'Galgame' },
-  { key: 'galgameResource', label: 'Galgame 资源' },
-  { key: 'galgameToolset', label: 'Galgame 工具' },
-  { key: 'galgameToolsetResource', label: 'Galgame 工具资源' },
-  { key: 'galgameRating', label: 'Galgame 评分' },
-  { key: 'contributeGalgame', label: 'Galgame 贡献' }
+
 ]
 
 const interactionBlocks = [
@@ -52,8 +47,7 @@ const interactionBlocks = [
 const infoList = [
   { label: '注册序号', value: (u: UserInfo) => u.id },
   { label: '今日发布话题', value: (u: UserInfo) => u.dailyTopicCount },
-  { label: '发布 Galgame', value: (u: UserInfo) => u.galgame },
-  { label: '今日发布 Galgame', value: (u: UserInfo) => u.dailyGalgameCount },
+
   {
     label: '注册时间',
     value: (u: UserInfo) =>
@@ -92,12 +86,6 @@ const infoList = [
             {{ KUN_USER_STATUS_MAP[user.status] }}
           </KunBadge>
         </div>
-      </div>
-      <div class="text-right">
-        <div class="text-secondary text-3xl font-bold">
-          {{ user.moemoepoint }}
-        </div>
-        <div class="text-default-500 text-sm">萌萌点</div>
       </div>
     </KunCard>
 

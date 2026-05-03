@@ -84,7 +84,7 @@ onKeyStroke('Enter', async (e) => {
             <KunImage src="/favicon.webp" class-name="h-8 w-8 rounded-2xl" />
             注册
           </h1>
-          <p class="text-default-500 mb-1">鲲的朋友! 很荣幸此生遇见你!</p>
+          <p class="text-default-500 mb-1">我的朋友! 很荣幸此生遇见你!</p>
           <p class="text-default-500">
             {{ `希望这个小家可以给你带来倾城美好!` }}
           </p>

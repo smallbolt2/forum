@@ -1,17 +1,31 @@
-"""
-首页数据接口（Nuxt 前端期望：直接返回 {topics, galgames, activities}）
-"""
+
+
+from collections import defaultdict
 
 from flask import Blueprint, jsonify
+from sqlalchemy import func
+from sqlalchemy.exc import SQLAlchemyError
 
+from app import db
 from app.models.topic import Topic
 from app.models.user import User
-from app.models.prisma_topic_extras import TopicTag
+from app.models.prisma_topic_extras import (
+  TopicTag,
+  TopicSection,
+  TopicSectionRelation,
+  TopicLike,
+)
 from app.models.topic_reply import TopicReply
-from app.models.prisma_galgame_min import Galgame
 from app.models.prisma_toolset_min import GalgameToolset
 
 home_bp = Blueprint('home', __name__)
+
+
+def _rollback_session():
+    try:
+        db.session.rollback()
+    except Exception:
+        pass
 
 
 @home_bp.route('', methods=['GET'])
@@ -30,6 +44,33 @@ def get_home():
     if topic_ids:
         for tt in TopicTag.query.filter(TopicTag.topic_id.in_(topic_ids)).all():
             tags.setdefault(tt.topic_id, []).append(tt.tag)
+
+    sections_by_topic = defaultdict(list)
+    if topic_ids:
+        rels = TopicSectionRelation.query.filter(
+            TopicSectionRelation.topic_id.in_(topic_ids)
+        ).all()
+        section_ids = list({r.topic_section_id for r in rels})
+        section_map = {}
+        if section_ids:
+            for s in TopicSection.query.filter(TopicSection.id.in_(section_ids)).all():
+                section_map[s.id] = s.name
+        for r in rels:
+            name = section_map.get(r.topic_section_id)
+            if name:
+                sections_by_topic[r.topic_id].append(name)
+
+    like_counts = {
+        tid: c for tid, c in db.session.query(
+            TopicLike.topic_id, func.count(TopicLike.id)
+        ).filter(TopicLike.topic_id.in_(topic_ids)).group_by(TopicLike.topic_id).all()
+    } if topic_ids else {}
+
+    reply_counts = {
+        tid: c for tid, c in db.session.query(
+            TopicReply.topic_id, func.count(TopicReply.id)
+        ).filter(TopicReply.topic_id.in_(topic_ids)).group_by(TopicReply.topic_id).all()
+    } if topic_ids else {}
 
     users = {
         u.id: u for u in User.query.filter(User.id.in_([t.user_id for t in topics_rows])).all()
@@ -51,39 +92,15 @@ def get_home():
             'status': t.status,
             'hasBestAnswer': bool(t.best_answer_id),
             'isNSFWTopic': bool(t.is_nsfw),
-            'likeCount': 0,
-            'replyCount': 0,
+            'likeCount': like_counts.get(t.id, 0),
+            'replyCount': reply_counts.get(t.id, 0),
             'commentCount': 0,
-            'section': [],
+            'section': sections_by_topic.get(t.id, []),
             'statusUpdateTime': t.status_update_time.isoformat() if t.status_update_time else None,
             'upvoteTime': t.upvote_time.isoformat() if t.upvote_time else None
         })
 
-    # galgames: recent 12
-    galgame_rows = (
-        Galgame.query
-        .filter(Galgame.status != 1)
-        .order_by(Galgame.resource_update_time.desc())
-        .limit(12)
-        .all()
-    )
-    galgames = [{
-        'id': g.id,
-        'name': {
-            'en-us': g.name_en_us,
-            'ja-jp': g.name_ja_jp,
-            'zh-cn': g.name_zh_cn,
-            'zh-tw': g.name_zh_tw
-        },
-        'banner': g.banner,
-        'user': {'id': g.user_id, 'name': '', 'avatar': ''},
-        'contentLimit': g.content_limit,
-        'view': g.view,
-        'likeCount': 0,
-        'resourceUpdateTime': g.resource_update_time.isoformat() if g.resource_update_time else None,
-        'platform': [],
-        'language': []
-    } for g in galgame_rows]
+    galgames = []
 
     # activities: merge multiple event sources
     activities = []
@@ -131,33 +148,19 @@ def get_home():
             'content': (r.content or '')[:100]
         })
 
-    # Galgame creation
-    galgame_created_rows = (
-        Galgame.query
-        .filter(Galgame.status != 1)
-        .order_by(Galgame.created.desc())
-        .limit(5)
-        .all()
-    )
-    for g in galgame_created_rows:
-        name = g.name_zh_cn or g.name_zh_tw or g.name_ja_jp or g.name_en_us or ''
-        activities.append({
-            'uniqueId': f'galgame-{g.id}',
-            'type': 'GALGAME_CREATION',
-            'timestamp': g.created.isoformat() if g.created else None,
-            'actor': actor_payload(g.user_id),
-            'link': f'/galgame/{g.id}',
-            'content': name[:100]
-        })
+    # Toolset creation（无表时跳过）
+    try:
+        toolset_created_rows = (
+            GalgameToolset.query
+            .filter(GalgameToolset.status != 1)
+            .order_by(GalgameToolset.created.desc())
+            .limit(5)
+            .all()
+        )
+    except SQLAlchemyError:
+        _rollback_session()
+        toolset_created_rows = []
 
-    # Toolset creation
-    toolset_created_rows = (
-        GalgameToolset.query
-        .filter(GalgameToolset.status != 1)
-        .order_by(GalgameToolset.created.desc())
-        .limit(5)
-        .all()
-    )
     for t in toolset_created_rows:
         activities.append({
             'uniqueId': f'toolset-{t.id}',

@@ -6,7 +6,7 @@ import {
 
 useKunSeoMeta({
   title: '管理系统',
-  description: '建设世界上最强大美观的 game 网站管理系统, 专为 game 网站定制'
+  description: '建设世界上最强大美观的论坛系统'
 })
 
 const route = useRoute()

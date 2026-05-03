@@ -26,9 +26,7 @@ const emits = defineEmits<{
 
 const MB = 1024 * 1024
 
-const { moemoepoint, dailyToolsetUploadCount } = storeToRefs(
-  usePersistUserStore()
-)
+const { dailyToolsetUploadCount } = storeToRefs(usePersistUserStore())
 const fileInput = ref<HTMLInputElement>()
 const selectedFile = ref<File | null>(null)
 
@@ -44,7 +42,6 @@ const isLarge = computed(() => {
 const userUploadLimit = computed(
   () =>
     USER_DAILY_UPLOAD_LIMIT +
-    moemoepoint.value * MB -
     dailyToolsetUploadCount.value
 )
 

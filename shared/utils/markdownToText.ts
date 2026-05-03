@@ -1,5 +1,14 @@
+/** Milkdown 导出字面量 ~ 为 \\~，纯文本摘要里应还原（与后端 markdown_render 一致） */
+function unescapeMilkdownTildesOutsideFences(text: string): string {
+  const parts = text.split('```')
+  for (let i = 0; i < parts.length; i += 2) {
+    parts[i] = parts[i].replace(/\\~/g, '~')
+  }
+  return parts.join('```')
+}
+
 export const markdownToText = (markdown: string) => {
-  return markdown
+  return unescapeMilkdownTildesOutsideFences(markdown)
     .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
     .replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1')
     .replace(/(\*\*|__)(.*?)\1/g, '$2')

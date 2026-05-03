@@ -41,19 +41,38 @@ class User(db.Model):
             self.password = generate_password_hash(raw_password)
 
     def check_password(self, raw_password: str) -> bool:
-        if not self.password:
+        if raw_password is None:
+            return False
+        if isinstance(raw_password, bytes):
+            raw_password = raw_password.decode('utf-8', errors='strict')
+
+        stored = self.password
+        if stored is None:
+            return False
+        if isinstance(stored, (bytes, bytearray, memoryview)):
+            stored = bytes(stored).decode('utf-8', errors='ignore')
+        else:
+            stored = str(stored)
+        # MSSQL nvarchar/text 偶发首尾空白会破坏 bcrypt 校验
+        stored = stored.strip()
+        if not stored:
             return False
 
-        # Prisma/Nuxt 常见 bcrypt hash
-        if self.password.startswith('$2a$') or self.password.startswith('$2b$') or self.password.startswith('$2y$'):
+        # Prisma/Node bcrypt 常见前缀（含 $2y$ PHP 系）
+        if stored.startswith(('$2a$', '$2b$', '$2y$')):
             try:
-                return bcrypt.checkpw(raw_password.encode('utf-8'), self.password.encode('utf-8'))
+                pw = raw_password.encode('utf-8')
+                # 哈希为纯 ASCII，用 ascii 编码更贴近 Node 侧字节序列
+                return bcrypt.checkpw(pw, stored.encode('ascii'))
             except Exception:
-                return False
+                try:
+                    return bcrypt.checkpw(raw_password.encode('utf-8'), stored.encode('utf-8'))
+                except Exception:
+                    return False
 
-        # fallback: werkzeug pbkdf2/scrypt 格式
+        # fallback: werkzeug pbkdf2/scrypt 等
         try:
-            return check_password_hash(self.password, raw_password)
+            return check_password_hash(stored, raw_password)
         except Exception:
             return False
 

@@ -8,14 +8,14 @@ const props = defineProps<{
   isUpvoted: boolean
 }>()
 
-const { id, moemoepoint } = usePersistUserStore()
+const { id } = usePersistUserStore()
 const isUpvoted = ref(id && props.isUpvoted)
 const upvoteCount = ref(props.upvoteCount)
 
 const upvoteTopic = async () => {
   const res = await useComponentMessageStore().alert(
     '您确定推这个话题吗?',
-    '推话题将会消耗您 7 萌萌点, 并给被推者增加 3 萌萌点。'
+    '推话题后将增加该话题的热度。'
   )
   if (!res) {
     return
@@ -43,11 +43,6 @@ const handleClickUpvote = async () => {
 
   if (id === props.targetUserId) {
     useMessage(10241, 'warn')
-    return
-  }
-
-  if (moemoepoint < 50) {
-    useMessage(10242, 'warn')
     return
   }
 

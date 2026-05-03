@@ -17,7 +17,7 @@ def _require_admin(current_user):
   # Nuxt: role > 1 才允许访问这些页面
   if not current_user:
     return error('用户登录失效', code=401, http_status=401)
-  if current_user.role != 'admin':
+  if int(current_user.role) <= 1:
     return error('您没有权限查看此页面', code=403, http_status=403)
   return None
 
@@ -54,15 +54,15 @@ def admin_user_list(current_user=None):
   limit = request.args.get('limit', 20, type=int)
   offset = (page - 1) * limit
 
-  q = User.query.order_by(User.created_at.desc())
+  q = User.query.order_by(User.created.desc())
   total = q.count()
   data = q.offset(offset).limit(limit).all()
 
   users = [{
     'id': u.id,
-    'name': u.username,
+    'name': u.name,
     'avatar': u.avatar,
-    'created': u.created_at.isoformat() if u.created_at else None,
+    'created': u.created.isoformat() if u.created else None,
     'status': u.status
   } for u in data]
 
@@ -77,12 +77,12 @@ def admin_user_search(current_user=None):
     return guard
 
   q = request.args.get('q', '', type=str)
-  data = User.query.filter(User.username.like(f'%{q}%')).limit(50).all()
+  data = User.query.filter(User.name.like(f'%{q}%')).limit(50).all()
   users = [{
     'id': u.id,
-    'name': u.username,
+    'name': u.name,
     'avatar': u.avatar,
-    'created': u.created_at.isoformat() if u.created_at else None,
+    'created': u.created.isoformat() if u.created else None,
     'status': u.status
   } for u in data]
   return success(data=users, message='获取成功')

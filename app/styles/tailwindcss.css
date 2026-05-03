@@ -4,6 +4,10 @@
 
 :root {
   --kun-global-opacity: 0.7;
+  /* 左侧栏宽度：与 default.vue / TopBar 的 margin、left 同步改这里即可 */
+  --kun-sidebar-w-expanded: 360px;
+  --kun-sidebar-w-collapsed: 96px;
+  --kun-sidebar-edge: 8px;
 }
 
 @theme {
@@ -492,6 +496,11 @@
 }
 
 @layer base {
+  /* 略大于 16px，全站 rem 类字号更接近参考站 */
+  html {
+    font-size: 106.25%;
+  }
+
   *,
   ::after,
   ::before,
@@ -511,6 +520,39 @@
 }
 
 @layer utilities {
+  /* 主内容区相对左侧栏偏移（避免仅靠 Tailwind 任意类未进产物） */
+  @media (width >= 48rem) {
+    .kun-main-ms-expanded {
+      margin-inline-start: var(--kun-sidebar-w-expanded);
+    }
+
+    .kun-main-ms-collapsed {
+      margin-inline-start: calc(
+        var(--kun-sidebar-w-collapsed) + var(--kun-sidebar-edge)
+      );
+    }
+
+    .kun-topbar-left-expanded {
+      left: var(--kun-sidebar-w-expanded);
+    }
+
+    .kun-topbar-left-collapsed {
+      left: var(--kun-sidebar-w-collapsed);
+    }
+
+    .kun-topbar-w-expanded {
+      width: calc(
+        100% - var(--kun-sidebar-w-expanded) - var(--kun-sidebar-edge)
+      );
+    }
+
+    .kun-topbar-w-collapsed {
+      width: calc(
+        100% - var(--kun-sidebar-w-collapsed) - var(--kun-sidebar-edge)
+      );
+    }
+  }
+
   body {
     font-family:
       -apple-system,

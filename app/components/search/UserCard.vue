@@ -15,11 +15,7 @@ defineProps<{
       {{ user.bio }}
     </pre>
 
-    <div class="mt-2 flex items-center justify-between text-sm">
-      <div class="text-secondary flex items-center">
-        <KunIcon name="lucide:lollipop" class="h-5 w-5" />
-        {{ user.moemoepoint }}
-      </div>
+    <div class="mt-2 flex items-center justify-end text-sm">
       <span class="text-default-700">
         {{ formatDate(user.created, { isShowYear: true }) }}
       </span>

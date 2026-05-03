@@ -108,7 +108,7 @@ const handleDelete = async () => {
   }
   const okConfirm = await useComponentMessageStore().alert(
     '确定删除该工具资源吗？',
-    `删除资源将会消耗您 3 萌萌点, 资源将会永久删除, 不可恢复`
+    '资源将会永久删除，不可恢复'
   )
   if (!okConfirm) {
     return

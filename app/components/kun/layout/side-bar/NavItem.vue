@@ -29,7 +29,7 @@ const isExpanded = computed(() => props.expandedItems.includes(props.item.name))
             class="text-foreground mr-3 flex items-center justify-center text-xl"
             :name="item.icon"
           />
-          <span class="text-foreground text-sm sm:text-base">
+          <span class="text-foreground text-base sm:text-lg">
             {{ item.label }}
           </span>
 
@@ -70,7 +70,7 @@ const isExpanded = computed(() => props.expandedItems.includes(props.item.name))
         "
       >
         <KunIcon v-if="item.icon" :name="item.icon" />
-        <span class="text-sm sm:text-base">{{ item.label }}</span>
+        <span class="text-base sm:text-lg">{{ item.label }}</span>
       </span>
 
       <span v-if="item.hint" class="text-primary ml-auto text-xs">

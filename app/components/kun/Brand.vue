@@ -5,7 +5,7 @@
       src="/favicon.webp"
       :alt="kungal.titleShort"
     />
-    <span class="text-xl">{{ kungal.name }}</span>
+    <span class="text-2xl font-medium">{{ kungal.name }}</span>
     <KunBadge size="md" color="primary">论坛</KunBadge>
   </div>
 </template>

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import KunLayoutSidebar from '~/components/kun/layout/Sidebar.vue'
+
 const { showKUNGalgameHamburger } = storeToRefs(useTempSettingStore())
 
 const startX = ref(0)

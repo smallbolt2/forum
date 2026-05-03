@@ -10,9 +10,7 @@ const emits = defineEmits<{
   onSuccess: [ToolsetResource]
 }>()
 
-const { moemoepoint, dailyToolsetUploadCount } = storeToRefs(
-  usePersistUserStore()
-)
+const { dailyToolsetUploadCount } = storeToRefs(usePersistUserStore())
 
 const MB = 1024 * 1024
 
@@ -42,7 +40,7 @@ const handleUploadSuccess = (value: ToolsetUploadCompleteResponse) => {
       <p class="text-default-700 text-sm">
         您今日已使用存储量
         {{
-          `${(dailyToolsetUploadCount / MB).toFixed(3)} / ${USER_DAILY_UPLOAD_LIMIT / MB + moemoepoint} MB`
+          `${(dailyToolsetUploadCount / MB).toFixed(3)} / ${USER_DAILY_UPLOAD_LIMIT / MB} MB`
         }}
       </p>
       <KunProgress
@@ -59,12 +57,9 @@ const handleUploadSuccess = (value: ToolsetUploadCompleteResponse) => {
         </p>
         <p>2. 第一次发布资源前请对自己的设备查毒, 以免大量用户感染病毒</p>
         <p>3. 请注意工具资源的所有权, 作者明确禁止转载的资源请勿上传</p>
-        <p>
-          4. 发布一个工具资源您将获得 3 萌萌点, 删除一个工具将会扣除 3 萌萌点
-        </p>
-        <p>5. 每名用户每天有 (100 + 您的萌萌点数) MB 的上传额度, 每天会重置</p>
-        <p>6. 每名用户的最大上传文件大小为 2GB</p>
-        <p>7. 上传速度完全取决于您的网络情况, 网络不佳请使用代理</p>
+        <p>4. 每名用户每天有固定上传额度，系统每天会重置</p>
+        <p>5. 每名用户的最大上传文件大小为 2GB</p>
+        <p>6. 上传速度完全取决于您的网络情况, 网络不佳请使用代理</p>
       </div>
     </KunInfo>
 

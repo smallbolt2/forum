@@ -21,6 +21,9 @@ from app.routes.kun_topic_reply_detail import kun_topic_reply_detail_bp
 from app.routes.kun_doc_article_stub import kun_doc_article_bp
 from app.routes.kun_resource import kun_resource_bp
 from app.routes.kun_category import kun_category_bp
+from app.routes.kun_search import kun_search_bp
+from app.routes.kun_image import kun_image_bp
+from app.routes.kun_section import kun_section_bp
 
 # 创建API蓝图
 api_bp = Blueprint('api', __name__)
@@ -66,4 +69,7 @@ api_bp.register_blueprint(kun_topic_reply_detail_bp, url_prefix='/topic')
 api_bp.register_blueprint(kun_doc_article_bp, url_prefix='/doc')
 api_bp.register_blueprint(kun_resource_bp, url_prefix='/resource')
 api_bp.register_blueprint(kun_category_bp, url_prefix='/category')
+api_bp.register_blueprint(kun_search_bp, url_prefix='/search')
+api_bp.register_blueprint(kun_image_bp, url_prefix='/image')
+api_bp.register_blueprint(kun_section_bp, url_prefix='/section')
 

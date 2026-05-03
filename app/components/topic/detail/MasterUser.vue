@@ -36,11 +36,6 @@ const user = computed(() => props.user)
           {{ user.name }}
         </KunLink>
 
-        <p class="text-secondary flex items-center gap-1">
-          <KunIcon class="text-inherit" name="lucide:lollipop" />
-          {{ user.moemoepoint }}
-        </p>
-
         <TopicDetailTableOfContent />
       </KunCard>
     </div>

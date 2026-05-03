@@ -35,19 +35,23 @@ watch(
       return
     }
 
-    const userInfo = await $fetch('/api/user/login', {
-      method: 'POST',
-      body: loginForm,
-      watch: false,
-      ...kungalgameResponseHandler
-    })
-    if (userInfo) {
-      usePersistUserStore().setUserInfo(userInfo)
-      useKunLoliInfo(`登陆成功! 欢迎来到 ${kungal.name}`)
-      await navigateTo('/')
+    try {
+      const userInfo = await $fetch('/api/user/login', {
+        method: 'POST',
+        body: loginForm,
+        watch: false,
+        ...kungalgameResponseHandler
+      })
+      if (userInfo && typeof (userInfo as { id?: unknown }).id === 'number') {
+        usePersistUserStore().setUserInfo(userInfo)
+        useKunLoliInfo(`登陆成功! 欢迎来到 ${kungal.name}`)
+        await navigateTo('/')
+      }
+    } catch {
+      // 业务错误（如 HTTP 233）由 kungalgameResponseHandler 提示
+    } finally {
+      isCaptureSuccessful.value = false
     }
-
-    isCaptureSuccessful.value = false
   }
 )
 </script>
@@ -69,7 +73,7 @@ watch(
               class-name="h-8 w-8 rounded-2xl"
             />登录
           </h1>
-          <p class="text-default-500 mb-1">你好呀鲲的朋友! 欢迎回家!</p>
+          <p class="text-default-500 mb-1">你好呀我的朋友! 欢迎回家!</p>
           <p class="text-default-500">
             {{ `${kungal.titleShort}给你最温暖的拥抱!` }}
           </p>

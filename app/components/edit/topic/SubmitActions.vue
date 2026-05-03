@@ -2,7 +2,6 @@
 import { useTopicSubmitter } from '~/composables/topic/useTopicSubmitter'
 
 const { rules, submit, isSubmitting, isRewriteMode } = useTopicSubmitter()
-const { moemoepoint } = usePersistUserStore()
 
 const buttonText = computed(() => {
   if (isSubmitting.value) return '处理中...'
@@ -12,16 +11,14 @@ const buttonText = computed(() => {
 
 <template>
   <div class="space-y-6">
-    <div v-if="moemoepoint < 5000" class="space-y-4">
+    <div class="space-y-4">
       <h3 class="flex items-center gap-2 text-lg font-semibold">
         <Icon name="lucide:circle-alert" class="h-5 w-5" />
         发布须知
         <span class="text-danger-500">*</span>
       </h3>
       <p class="text-default-500 mt-2 text-sm">
-        {{
-          `勾选确认下面的须知即可发布话题, 仅对萌萌点 < 5000 的用户生效, 这是为了防止发布过多无意义的话题, 请您理解`
-        }}
+        勾选确认下面的须知即可发布话题。
       </p>
       <KunCheckBox
         v-model="rules.isReadRule"
@@ -38,13 +35,13 @@ const buttonText = computed(() => {
       <KunCheckBox
         v-model="rules.isValidTitle"
         type="single"
-        label="我确认: 我话题的标题非常直观具体详细, 例如《某某游戏运行报错 DirectDraw 初始化失败求助》，《求寻找 某某游戏 PSV 版本下载资源》, 而绝对不是《游戏报错求助》，《求助资源》"
+        label="我确认: 我话题的标题非常直观具体详细"
         color="primary"
       />
       <KunCheckBox
         v-model="rules.isKnownConsequence"
         type="single"
-        label="我确认: 违反上面的规则或违反论坛的总规定, 将会被扣除巨量萌萌点甚至永久封禁"
+        label="我确认: 违反上面的规则或违反论坛的总规定, 可能会导致话题被删除或账号被封禁"
         color="primary"
       />
     </div>

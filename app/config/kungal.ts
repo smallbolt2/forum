@@ -5,7 +5,7 @@ const KUN_SITE_SHORT = '基于Python+Vue的论坛平台'
 const KUN_SITE_MENTION = '@kungalgame'
 const KUN_SITE_TITLE = '基于Python+Vue的论坛平台'
 const KUN_SITE_DESCRIPTION =
-  '世界上最萌的 Galgame 论坛! 世界上最先进的 Galgame 资源 Wiki 网站! 永远免费! Next Generation Galgame Website Wiki!'
+  ' 永远免费!'
 const KUN_SITE_URL = 'https://www.372160.xyz'
 const KUN_SITE_URL_BACKUP = 'https://www.372160.xyz'
 const KUN_SITE_NAV = 'https://nav.kungal.org'

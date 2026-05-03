@@ -11,6 +11,33 @@ interface KunErrorData {
   statusMessage: string
 }
 
+/** Nitro H3 嵌套 data；Flask 统一 error() 为顶层 code + message */
+function extractBusinessCodeMessage(body: unknown): {
+  code: number
+  message: string
+} | null {
+  if (!body || typeof body !== 'object') {
+    return null
+  }
+  const b = body as Record<string, unknown>
+  if (typeof b.code === 'number' && typeof b.message === 'string') {
+    return { code: b.code, message: b.message }
+  }
+  const inner = b.data
+  if (
+    inner &&
+    typeof inner === 'object' &&
+    typeof (inner as { code?: unknown }).code === 'number' &&
+    typeof (inner as { message?: unknown }).message === 'string'
+  ) {
+    return {
+      code: (inner as { code: number }).code,
+      message: (inner as { message: string }).message
+    }
+  }
+  return null
+}
+
 interface ResponseMap {
   blob: Blob
   text: string
@@ -28,17 +55,18 @@ export const onResponse = async <R extends ResponseType>(
   context: KunOnResponseContext<R>
 ) => {
   const { response } = context as { response: FetchResponse<ResponseType> }
-  const errorData = response?._data as KunErrorData | undefined
+  const raw = response?._data
+  const parsed = extractBusinessCodeMessage(raw)
 
-  if (!errorData) {
+  if (!raw) {
     useMessage('网络请求失败，请稍后重试', 'error')
     return
   }
-  if (!errorData.data) {
+  if (!parsed) {
     return
   }
 
-  const { code, message } = errorData.data
+  const { code, message } = parsed
 
   if (code === 205) {
     const navigateCookie = Cookies.get('kungalgame-is-navigate-to-login')

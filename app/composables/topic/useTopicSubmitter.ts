@@ -1,17 +1,12 @@
 import { createTopicSchema } from '~/validations/topic'
 import { useTopicEditorStore } from './useTopicEditorStore'
 import { kungalgameResponseHandler } from '~/utils/responseHandler'
-import {
-  TOPIC_SECTION_CONSUME_MOEMOEPOINTS,
-  MOEMOEPOINT_COST_FOR_CONSUME_SECTION
-} from '~/config/moemoepoint'
 
 export const useTopicSubmitter = () => {
   const { category, section, tags, title, content, isNSFW } =
     useTopicEditorStore()
   const tempStore = useTempEditStore()
   const persistStore = usePersistEditTopicStore()
-  const { moemoepoint } = usePersistUserStore()
 
   const rules = reactive({
     isReadRule: false,
@@ -28,7 +23,7 @@ export const useTopicSubmitter = () => {
     }
 
     const isReadAllRules = Object.values(rules).every((value) => value)
-    if (moemoepoint < 50 && !isReadAllRules) {
+    if (!isReadAllRules) {
       useMessage('请勾选同意所有发布须知后再发布话题', 'warn')
       return
     }
@@ -53,24 +48,9 @@ export const useTopicSubmitter = () => {
       return
     }
 
-    const hasConsumeSection = TOPIC_SECTION_CONSUME_MOEMOEPOINTS.some((item) =>
-      submitData.section.includes(item as 'g-seeking')
-    )
-    if (
-      hasConsumeSection &&
-      moemoepoint < MOEMOEPOINT_COST_FOR_CONSUME_SECTION
-    ) {
-      useMessage(
-        `您没有足够的萌萌点来发布求助或者寻求资源的话题, 您可以通过发布 Game, 签到, 接受别人的赞赏, 等等来获取萌萌点`,
-        'warn'
-      )
-      return
-    }
     const confirmation = await useComponentMessageStore().alert(
       `确定要${isRewriteMode.value ? '提交更改' : '发布话题'}吗?`,
-      hasConsumeSection
-        ? `发布此分类的话题将会消耗您 10 萌萌点, 您目前有 ${moemoepoint} 萌萌点`
-        : ''
+      ''
     )
     if (!confirmation) return
 

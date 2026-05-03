@@ -214,10 +214,7 @@ const handleTagInputBackspace = () => {
         color="primary"
       />
       <p class="text-default-500 mt-2 text-sm">
-        勾选后, 未开启网站  模式的用户将无法看到该话题, 和 Game 的 
-        标准一样, 看起来不能在公司报告大会上放在 PPT 里展示的话题都是 ,
-        总之就是越严越好，可以错杀不可以放过 (另外, 只允许萌萌的隐藏,
-        不允许纯粹的隐藏废料)
+        勾选后,只允许萌萌的隐藏
       </p>
     </div>
   </div>

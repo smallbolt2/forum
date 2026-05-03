@@ -33,12 +33,80 @@ from app.utils.kun_auth_cookie import get_uid_from_refresh_cookie
 from app.utils.markdown_render import markdown_to_html
 
 
+def _is_topic_moderator(user) -> bool:
+  """与 Nuxt 一致：role >= 2 视为可代作者管理话题"""
+  try:
+    return int(user.role) >= 2
+  except (TypeError, ValueError):
+    return False
+
+
 kun_topic_bp = Blueprint('kun_topic', __name__)
 
 
 def _get_nsfw_mode():
   # Nuxt 里用 getNSFWCookie(event) 返回 'sfw' 等，这里简单兼容
   return request.cookies.get('nsfw') or request.cookies.get('kun-nsfw') or ''
+
+
+def _build_targets_for_replies(reply_ids):
+  """
+  构建 reply_id -> targets[] 映射，并统计 targetByCount（被引用次数）
+  """
+  if not reply_ids:
+    return {}, {}
+
+  target_rows = TopicReplyTarget.query.filter(
+    TopicReplyTarget.reply_id.in_(reply_ids)
+  ).all()
+  targets_by_reply = defaultdict(list)
+  if not target_rows:
+    return targets_by_reply, {}
+
+  target_reply_ids = list({t.target_reply_id for t in target_rows})
+  target_reply_map = {}
+  if target_reply_ids:
+    for tr in TopicReply.query.filter(TopicReply.id.in_(target_reply_ids)).all():
+      target_reply_map[tr.id] = tr
+
+  target_user_ids = list({
+    tr.user_id for tr in target_reply_map.values()
+  })
+  target_users_map = {}
+  if target_user_ids:
+    for u in User.query.filter(User.id.in_(target_user_ids)).all():
+      target_users_map[u.id] = u
+
+  for row in target_rows:
+    tr = target_reply_map.get(row.target_reply_id)
+    if not tr:
+      continue
+    tu = target_users_map.get(tr.user_id)
+    # row.content 为楼中楼「针对该层的回复正文」；勿用 tr.content（整楼全文），否则会把
+    # Milkdown 序列化出的转义字符等整段塞进引用区，页面上会像多出 \ 等异常符号。
+    quote_md = (row.content or '').strip()
+    preview = quote_md or (tr.content or '').strip()
+    targets_by_reply[row.reply_id].append({
+      'id': tr.id,
+      'floor': tr.floor,
+      'user': {
+        'id': tr.user_id,
+        'name': tu.name if tu else '',
+        'avatar': tu.avatar if tu else '',
+      },
+      'contentPreview': preview[:120],
+      'replyContentHtml': markdown_to_html(quote_md),
+      'replyContentMarkdown': quote_md
+    })
+
+  target_by_counts = {
+    rid: c for rid, c in db.session.query(
+      TopicReplyTarget.target_reply_id, func.count(TopicReplyTarget.id)
+    ).filter(
+      TopicReplyTarget.target_reply_id.in_(reply_ids)
+    ).group_by(TopicReplyTarget.target_reply_id).all()
+  }
+  return targets_by_reply, target_by_counts
 
 
 def _topic_card(topic: Topic):
@@ -354,24 +422,43 @@ def update_topic(topic_id, current_user=None):
       return error('未找到此话题', code=404, http_status=404)
 
     # Nuxt: 作者或管理员(role>=2)；Flask 里暂以 admin 角色放行
-    if current_user.id != topic.user_id and current_user.role != 'admin':
+    if current_user.id != topic.user_id and not _is_topic_moderator(current_user):
       return error('您没有权限更改此话题', code=403, http_status=403)
 
-    topic.title = data.get('title', topic.title)
-    topic.content = data.get('content', topic.content)
-    topic.is_nsfw = bool(data.get('is_nsfw', topic.is_nsfw))
+    if 'title' in data:
+      topic.title = data['title']
+    if 'content' in data:
+      topic.content = data['content']
+    if 'is_nsfw' in data:
+      topic.is_nsfw = bool(data['is_nsfw'])
+    if 'category' in data:
+      topic.category = data['category']
+
     topic.edited = datetime.utcnow()
     topic.status_update_time = datetime.utcnow()
+    topic.updated = datetime.utcnow()
 
-    # 更新分类/section/tag
-    if 'category' in data or 'section' in data or 'tag' in data:
-      category_info = topic._parse_category()
-      payload = {
-        'category': data.get('category', category_info.get('name')),
-        'sections': data.get('section', category_info.get('sections', [])),
-        'tags': data.get('tag', category_info.get('tags', []))
-      }
-      topic.category = json.dumps(payload, ensure_ascii=False)
+    # 与 Prisma/Nitro 一致：topic_tag、topic_section_relation 表维护标签与分区
+    if 'tag' in data:
+      tags = [t for t in (data.get('tag') or []) if t]
+      TopicTag.query.filter_by(topic_id=topic_id).delete()
+      for t in dict.fromkeys(tags):
+        db.session.add(TopicTag(topic_id=topic_id, tag=t))
+
+    if 'section' in data:
+      sections = data.get('section') or []
+      TopicSectionRelation.query.filter_by(topic_id=topic_id).delete()
+      if sections:
+        sec_rows = TopicSection.query.filter(TopicSection.name.in_(sections)).all()
+        id_by_name = {s.name: s.id for s in sec_rows}
+        used_sid = set()
+        for name in sections:
+          sid = id_by_name.get(name)
+          if sid is not None and sid not in used_sid:
+            used_sid.add(sid)
+            db.session.add(
+              TopicSectionRelation(topic_id=topic_id, topic_section_id=sid)
+            )
 
     db.session.commit()
     return jsonify('MOEMOE update topic successfully!')
@@ -391,7 +478,7 @@ def delete_topic_permanently(topic_id, current_user=None):
     if not topic:
       return error('未找到该话题', code=404, http_status=404)
 
-    if topic.user_id != current_user.id and current_user.role != 'admin':
+    if topic.user_id != current_user.id and not _is_topic_moderator(current_user):
       return error('您没有权限删除该话题', code=403, http_status=403)
 
     # 简化：删除 replies，再删除 topic
@@ -481,7 +568,7 @@ def list_replies(topic_id):
       TopicReplyDislike.topic_reply_id, func.count(TopicReplyDislike.id)
     ).filter(TopicReplyDislike.topic_reply_id.in_(reply_ids)).group_by(TopicReplyDislike.topic_reply_id).all()} if reply_ids else {}
 
-    # targets count = how many target_by (reverse) not implemented; fallback 0
+    targets_by_reply, target_by_counts = _build_targets_for_replies(reply_ids)
 
     liked_set = set()
     disliked_set = set()
@@ -515,10 +602,10 @@ def list_replies(topic_id):
         'isLiked': r.id in liked_set,
         'dislikeCount': dislike_counts.get(r.id, 0),
         'isDisliked': r.id in disliked_set,
-        'targetByCount': 0,
+        'targetByCount': target_by_counts.get(r.id, 0),
         'comment': [],
         'created': r.created.isoformat() if r.created else None,
-        'targets': [],
+        'targets': targets_by_reply.get(r.id, []),
         'isPinned': r.id == topic.pinned_reply_id,
         'isBestAnswer': r.id == topic.best_answer_id
       })
@@ -537,8 +624,9 @@ def create_reply(topic_id, current_user=None):
   try:
     data = request.get_json() or {}
     content = (data.get('content') or '').strip()
-    if not content:
-      return error('回复内容不能为空', code=400, http_status=400)
+    targets = data.get('targets') or []
+    if not content and not targets:
+      return error('回复内容或回复目标不能为空', code=400, http_status=400)
 
     topic = Topic.query.get(topic_id)
     if not topic or topic.status == 2:
@@ -560,8 +648,7 @@ def create_reply(topic_id, current_user=None):
     db.session.add(reply)
     topic.status_update_time = datetime.utcnow()
     # optional targets (topic_reply_target)
-    targets = data.get('targets') or []
-    valid_targets = [t for t in targets if (t.get('content') or '').strip() and t.get('targetReplyId')]
+    valid_targets = [t for t in targets if t.get('targetReplyId')]
     db.session.commit()
 
     if valid_targets:
@@ -569,11 +656,12 @@ def create_reply(topic_id, current_user=None):
         db.session.add(TopicReplyTarget(
           reply_id=reply.id,
           target_reply_id=int(t.get('targetReplyId')),
-          content=t.get('content')
+          content=t.get('content') or ''
         ))
       db.session.commit()
 
     u = User.query.get(reply.user_id)
+    targets_by_reply, target_by_counts = _build_targets_for_replies([reply.id])
     formatted = {
       'id': reply.id,
       'topicId': reply.topic_id,
@@ -591,10 +679,10 @@ def create_reply(topic_id, current_user=None):
       'isLiked': False,
       'dislikeCount': 0,
       'isDisliked': False,
-      'targetByCount': 0,
+      'targetByCount': target_by_counts.get(reply.id, 0),
       'comment': [],
       'created': reply.created.isoformat() if reply.created else None,
-      'targets': [],
+      'targets': targets_by_reply.get(reply.id, []),
       'isBestAnswer': False,
       'isPinned': False
     }
@@ -613,14 +701,15 @@ def update_reply(topic_id, current_user=None):
     content = (data.get('content') or '').strip()
     if not reply_id:
       return error('缺少 replyId', code=400, http_status=400)
-    if not content:
-      return error('回复内容不能为空', code=400, http_status=400)
+    targets = data.get('targets') or []
+    if not content and not targets:
+      return error('回复内容或回复目标不能为空', code=400, http_status=400)
 
     reply = TopicReply.query.get(reply_id)
     if not reply or reply.topic_id != topic_id:
       return error('回复不存在', code=404, http_status=404)
 
-    if reply.user_id != current_user.id and current_user.role != 'admin':
+    if reply.user_id != current_user.id and not _is_topic_moderator(current_user):
       return error('没有权限编辑回复', code=403, http_status=403)
 
     reply.content = content
@@ -631,12 +720,12 @@ def update_reply(topic_id, current_user=None):
     if 'targets' in data:
       TopicReplyTarget.query.filter_by(reply_id=reply.id).delete()
       targets = data.get('targets') or []
-      valid_targets = [t for t in targets if (t.get('content') or '').strip() and t.get('targetReplyId')]
+      valid_targets = [t for t in targets if t.get('targetReplyId')]
       for t in valid_targets:
         db.session.add(TopicReplyTarget(
           reply_id=reply.id,
           target_reply_id=int(t.get('targetReplyId')),
-          content=t.get('content')
+          content=t.get('content') or ''
         ))
     db.session.commit()
 
@@ -647,6 +736,7 @@ def update_reply(topic_id, current_user=None):
     is_liked = bool(uid and TopicReplyLike.query.filter_by(topic_reply_id=reply.id, user_id=uid).first())
     is_disliked = bool(uid and TopicReplyDislike.query.filter_by(topic_reply_id=reply.id, user_id=uid).first())
 
+    targets_by_reply, target_by_counts = _build_targets_for_replies([reply.id])
     formatted = {
       'id': reply.id,
       'topicId': reply.topic_id,
@@ -664,10 +754,10 @@ def update_reply(topic_id, current_user=None):
       'isLiked': is_liked,
       'dislikeCount': dislike_count,
       'isDisliked': is_disliked,
-      'targetByCount': 0,
+      'targetByCount': target_by_counts.get(reply.id, 0),
       'comment': [],
       'created': reply.created.isoformat() if reply.created else None,
-      'targets': [],
+      'targets': targets_by_reply.get(reply.id, []),
       'isPinned': False,
       'isBestAnswer': False
     }
@@ -689,7 +779,7 @@ def delete_reply(topic_id, current_user=None):
     if not reply or reply.status == 2 or reply.topic_id != topic_id:
       return error('回复不存在', code=404, http_status=404)
 
-    if reply.user_id != current_user.id and current_user.role != 'admin':
+    if reply.user_id != current_user.id and not _is_topic_moderator(current_user):
       return error('没有权限删除回复', code=403, http_status=403)
 
     reply.status = 2

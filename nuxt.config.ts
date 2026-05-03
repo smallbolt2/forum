@@ -22,8 +22,9 @@ export default defineNuxtConfig({
     layoutTransition: { name: 'kun-page', mode: 'out-in' },
 
     // https://github.com/nuxt/nuxt/issues/26565#issuecomment-3448517709
-    baseURL: '/',
-    buildAssetsDir: `/_nuxt/v${Math.floor(Date.now() / 1000).toString()}/`
+    baseURL: '/'
+    // 勿自定义 buildAssetsDir 为 Date.now()：每次重启 dev 资源路径会变，旧标签页请求
+    // `/_nuxt/v…/builds/meta/dev.json` 会 404。需要拆缓存时改 public 文件名或 nginx 配置即可。
   },
 
   experimental: {

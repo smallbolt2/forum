@@ -24,10 +24,9 @@ const handleDeleteToolset = async () => {
     return
   }
 
-  const moemoePointToConsume = 3 + data.value.resource.length * 3
   const res = await useComponentMessageStore().alert(
     '确定删除该工具？',
-    `删除这个工具将会消耗 ${moemoePointToConsume} 萌萌点, 计算公式为 3 + 这个工具下所有的资源数 * 3, 删除是永久性的, 不可撤销`
+    '删除是永久性的，不可撤销'
   )
   if (!res) {
     return

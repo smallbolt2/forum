@@ -9,7 +9,8 @@ const replies = ref<TopicReply[]>([])
 watch(
   () => props.initialReplies,
   (newVal) => {
-    replies.value = JSON.parse(JSON.stringify(newVal))
+    // 勿用 structuredClone：props 上的数组常为 Vue Proxy，会报「could not be cloned」
+    replies.value = JSON.parse(JSON.stringify(newVal)) as TopicReply[]
   },
   { immediate: true, deep: true }
 )

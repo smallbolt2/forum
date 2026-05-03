@@ -18,12 +18,24 @@ const { data, status } = await useFetch('/api/admin/user', {
 const searchResult = ref<AdminUser[]>([])
 const searchQuery = ref('')
 const isSearching = ref(false)
+const userPageData = computed<{ users: AdminUser[]; totalCount: number }>(() => {
+  const payload = data.value as
+    | { users?: AdminUser[]; totalCount?: number }
+    | { data?: { users?: AdminUser[]; totalCount?: number } }
+    | null
+    | undefined
+
+  const raw = payload && 'data' in payload ? payload.data : payload
+  return {
+    users: raw?.users ?? [],
+    totalCount: raw?.totalCount ?? 0
+  }
+})
+
 const displayUsers = computed<AdminUser[]>(() =>
   searchQuery.value.trim()
     ? searchResult.value
-    : data.value
-      ? data.value.users
-      : []
+    : userPageData.value.users
 )
 
 const handleSearch = async () => {
@@ -34,11 +46,19 @@ const handleSearch = async () => {
   isSearching.value = true
   const res = await $fetch(`/api/admin/user/search`, {
     method: 'GET',
-    query: { q: searchQuery.value.split(' ') }
+    query: { q: searchQuery.value.trim() },
+    ...kungalgameResponseHandler
   })
   isSearching.value = false
 
-  searchResult.value = res
+  const searchPayload = res as
+    | AdminUser[]
+    | { data?: AdminUser[] }
+    | null
+    | undefined
+  searchResult.value = Array.isArray(searchPayload)
+    ? searchPayload
+    : (searchPayload?.data ?? [])
 }
 
 watchDebounced(
@@ -71,7 +91,7 @@ watchDebounced(
 
           <div class="text-default-600 mt-4 flex items-center gap-4 text-sm">
             <span v-if="!searchQuery.trim()">
-              {{ `总计 ${data?.totalCount || 0} 个用户` }}
+              {{ `总计 ${userPageData.totalCount} 个用户` }}
             </span>
             <span v-else>{{ `搜索结果: ${searchResult.length} 个用户` }}</span>
           </div>
@@ -94,9 +114,9 @@ watchDebounced(
     <KunLoading v-if="isSearching" />
 
     <KunPagination
-      v-if="data.totalCount > pageData.limit && !searchQuery.trim()"
+      v-if="userPageData.totalCount > pageData.limit && !searchQuery.trim()"
       v-model:current-page="pageData.page"
-      :total-page="Math.ceil(data.totalCount / pageData.limit)"
+      :total-page="Math.ceil(userPageData.totalCount / pageData.limit)"
       :is-loading="status === 'pending'"
     />
   </KunCard>

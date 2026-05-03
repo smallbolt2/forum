@@ -1,4 +1,10 @@
 <script setup lang="ts">
+import KunBrand from '~/components/kun/Brand.vue'
+import KunImage from '~/components/kun/image/Image.vue'
+import KunLink from '~/components/kun/link/Link.vue'
+import KunLayoutSideBarCollapsed from '~/components/kun/layout/side-bar/Collapsed.vue'
+import KunLayoutSideBarNav from '~/components/kun/layout/side-bar/Nav.vue'
+
 const props = withDefaults(
   defineProps<{
     className?: string
@@ -14,6 +20,12 @@ const { showKUNGalgameSidebarCollapsed } = storeToRefs(
 const isCollapsed = computed(
   () => !props.forceExpanded && showKUNGalgameSidebarCollapsed.value
 )
+
+const sidebarWidthStyle = computed(() => ({
+  width: isCollapsed.value
+    ? 'var(--kun-sidebar-w-collapsed)'
+    : 'var(--kun-sidebar-w-expanded)'
+}))
 
 const links = [
   {
@@ -41,16 +53,17 @@ const links = [
 
 <template>
   <div
+    :style="sidebarWidthStyle"
     :class="
       cn(
-        'scrollbar-hide sm:bg-default-100 bg-default-200 border-default/20 fixed z-20 flex h-full shrink-0 -translate-x-1 flex-col justify-between rounded-none border-r p-0 transition-all duration-300 sm:backdrop-blur-[var(--kun-background-blur)]',
-        isCollapsed ? 'w-20' : 'w-3xs overflow-y-scroll',
+        'scrollbar-hide sm:bg-default-100 bg-default-200 border-default/20 fixed z-20 flex h-full shrink-0 -translate-x-1 flex-col justify-between rounded-none border-r p-0 transition-[width] duration-300 sm:backdrop-blur-[var(--kun-background-blur)]',
+        !isCollapsed && 'overflow-y-scroll',
         className
       )
     "
     @click.stop
   >
-    <div class="space-y-3 p-3">
+    <div class="space-y-3 p-4">
       <template v-if="!isCollapsed">
         <KunBrand />
       </template>

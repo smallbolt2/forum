@@ -14,12 +14,10 @@ const { data } = await useFetch(`/api/home`, {
 
       <HomeTopicContainer v-if="data" :topics="data.topics" />
 
-      <HomeGalgameContainer v-if="data" :galgames="data.galgames" />
-
       <HomeFooter />
     </div>
 
-    <div class="w-full shrink-0 space-y-3 lg:w-72">
+    <div class="w-full shrink-0 space-y-3 lg:w-96">
       <HomeAsideRecent v-if="data" :activities="data.activities" />
 
       <HomeAsideHelp />

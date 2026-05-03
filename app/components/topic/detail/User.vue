@@ -23,10 +23,6 @@ withDefaults(
           <KunLink underline="hover" :to="`/user/${user.id}/info`">
             {{ user.name }}
           </KunLink>
-          <p class="text-secondary flex items-center gap-1">
-            <KunIcon class="text-inherit" name="lucide:lollipop" />
-            {{ user.moemoepoint }}
-          </p>
         </div>
 
         <KunLink
