@@ -1,10 +1,11 @@
 """
 邮箱验证码（对齐 Nitro useStorage + sendVerificationCodeEmail）
-开发环境未配置 SMTP 时：在 DEBUG 下打日志并仍返回 salt，便于联调。
+开发环境：注册发码时在终端打印验证码；未配置 SMTP 时仍返回 salt 便于联调。
 """
 
 from __future__ import annotations
 
+import os
 import secrets
 import smtplib
 import threading
@@ -32,6 +33,28 @@ def _purge_expired_locked() -> None:
 
 def generate_random_code(length: int = 7) -> str:
   return ''.join(secrets.choice(_CODE_CHARSET) for _ in range(length))
+
+
+def should_log_verification_code(app) -> bool:
+  """开发联调：是否在终端输出验证码（默认跟随 DEBUG，可用环境变量强制开启）。"""
+  env = os.environ.get('KUN_LOG_VERIFICATION_CODE', '').strip().lower()
+  if env in ('1', 'true', 'yes', 'on'):
+    return True
+  if env in ('0', 'false', 'no', 'off'):
+    return False
+  return bool(app.config.get('LOG_VERIFICATION_CODE', app.debug))
+
+
+def log_register_verification_code(app, email: str, code: str, salt: str) -> None:
+  """注册发码：写入 Flask 日志并 print 到运行 python run.py 的终端。"""
+  if not should_log_verification_code(app):
+    return
+  msg = (
+    f'[注册验证码] email={email} code={code} '
+    f'salt(前8)={salt[:8]} — 有效期 10 分钟'
+  )
+  app.logger.warning(msg)
+  print(msg, flush=True)
 
 
 def rate_throttled(email: str, ip: str, ttl_sec: float = 30.0) -> bool:

@@ -42,8 +42,8 @@ export default defineEventHandler(async (event) => {
       count: messageCount,
       unreadCount: messageUnreadCount,
       route: 'notice',
-      title: 'zako~',
-      avatar: ''
+      title: '消息',
+      avatar: '/avatar/user_1/1.webp'
     },
     {
       chatroomName: '',
@@ -52,8 +52,8 @@ export default defineEventHandler(async (event) => {
       count: systemMessageCount,
       unreadCount: systemMessageUnreadCount,
       route: 'system',
-      title: 'zako~',
-      avatar: ''
+      title: '系统通知',
+      avatar: '/avatar/user_1/2.webp'
     }
   ]
 

@@ -17,6 +17,8 @@ onMounted(() => (messageStatus.value = 'online'))
     content-class="flex-row h-[calc(100dvh-120px)]"
   >
     <MessageAsideContainer />
-    <NuxtPage />
+    <div class="min-w-0 flex-1 overflow-hidden">
+      <NuxtPage />
+    </div>
   </KunCard>
 </template>

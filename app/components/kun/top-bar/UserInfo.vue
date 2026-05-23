@@ -60,11 +60,11 @@ const logOut = async () => {
         class-name="text-base p-1 text-foreground"
         href="/message"
       >
-        <!-- 我的消息
+        我的消息
         <span
           v-if="isShowMessageDot"
           class="bg-secondary-500 absolute right-1 bottom-3 size-2 rounded-full"
-        /> -->
+        /> 
       </KunButton>
 
       <KunButton

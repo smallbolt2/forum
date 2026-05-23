@@ -8,8 +8,9 @@ from datetime import datetime
 from collections import defaultdict
 
 from sqlalchemy import func
+from sqlalchemy.exc import SQLAlchemyError
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 
 from app import db
 from app.models.topic import Topic
@@ -25,10 +26,23 @@ from app.models.prisma_topic_extras import (
   TopicUpvote,
   TopicReplyLike,
   TopicReplyDislike,
-  TopicReplyTarget
+  TopicReplyTarget,
 )
 from app.utils.auth import token_required
 from app.utils.response import error
+from app.utils.topic_reactions import (
+  toggle_topic_like,
+  toggle_topic_dislike,
+  toggle_topic_favorite,
+  upvote_topic,
+  toggle_reply_like,
+  toggle_reply_dislike,
+  toggle_comment_like,
+)
+from app.utils.topic_reply_delete import (
+  delete_topic_replies_recursive,
+  moemoepoint_cost_for_reply_delete,
+)
 from app.utils.kun_auth_cookie import get_uid_from_refresh_cookie
 from app.utils.markdown_render import markdown_to_html
 
@@ -492,28 +506,118 @@ def delete_topic_permanently(topic_id, current_user=None):
 
 
 # ----- reactions (like/dislike/favorite/upvote) -----
+def _reaction_body_id(*keys):
+  data = request.get_json() or {}
+  for key in keys:
+    val = data.get(key)
+    if val is not None:
+      return int(val)
+  return None
+
+
 @kun_topic_bp.route('/<int:topic_id>/like', methods=['PUT'])
 @token_required
 def like_topic(topic_id, current_user=None):
-  return jsonify(True)
+  try:
+    tid = _reaction_body_id('topicId', 'topic_id') or topic_id
+    msg = toggle_topic_like(current_user.id, tid)
+    return jsonify(msg)
+  except ValueError as e:
+    return error(str(e), code=400, http_status=400)
+  except SQLAlchemyError as e:
+    db.session.rollback()
+    return error(str(e), code=500, http_status=500)
 
 
 @kun_topic_bp.route('/<int:topic_id>/dislike', methods=['PUT'])
 @token_required
 def dislike_topic(topic_id, current_user=None):
-  return jsonify(True)
+  try:
+    tid = _reaction_body_id('topicId', 'topic_id') or topic_id
+    msg = toggle_topic_dislike(current_user.id, tid)
+    return jsonify(msg)
+  except ValueError as e:
+    return error(str(e), code=400, http_status=400)
+  except SQLAlchemyError as e:
+    db.session.rollback()
+    return error(str(e), code=500, http_status=500)
 
 
 @kun_topic_bp.route('/<int:topic_id>/favorite', methods=['PUT'])
 @token_required
 def favorite_topic(topic_id, current_user=None):
-  return jsonify(True)
+  try:
+    tid = _reaction_body_id('topicId', 'topic_id') or topic_id
+    msg = toggle_topic_favorite(current_user.id, tid)
+    return jsonify(msg)
+  except ValueError as e:
+    return error(str(e), code=400, http_status=400)
+  except SQLAlchemyError as e:
+    db.session.rollback()
+    return error(str(e), code=500, http_status=500)
 
 
 @kun_topic_bp.route('/<int:topic_id>/upvote', methods=['PUT'])
 @token_required
-def upvote_topic(topic_id, current_user=None):
-  return jsonify(True)
+def upvote_topic_route(topic_id, current_user=None):
+  try:
+    tid = _reaction_body_id('topicId', 'topic_id') or topic_id
+    msg = upvote_topic(current_user.id, tid)
+    return jsonify(msg)
+  except ValueError as e:
+    return error(str(e), code=400, http_status=400)
+  except SQLAlchemyError as e:
+    db.session.rollback()
+    return error(str(e), code=500, http_status=500)
+
+
+@kun_topic_bp.route('/<int:topic_id>/reply/like', methods=['PUT'])
+@token_required
+def like_reply(topic_id, current_user=None):
+  try:
+    rid = _reaction_body_id('replyId', 'reply_id')
+    if not rid:
+      return error('缺少 replyId', code=400, http_status=400)
+    msg = toggle_reply_like(current_user.id, rid)
+    return jsonify(msg)
+  except ValueError as e:
+    return error(str(e), code=400, http_status=400)
+  except SQLAlchemyError as e:
+    db.session.rollback()
+    return error(str(e), code=500, http_status=500)
+
+
+@kun_topic_bp.route('/<int:topic_id>/reply/dislike', methods=['PUT'])
+@token_required
+def dislike_reply(topic_id, current_user=None):
+  try:
+    rid = _reaction_body_id('replyId', 'reply_id')
+    if not rid:
+      return error('缺少 replyId', code=400, http_status=400)
+    msg = toggle_reply_dislike(current_user.id, rid)
+    return jsonify(msg)
+  except ValueError as e:
+    return error(str(e), code=400, http_status=400)
+  except SQLAlchemyError as e:
+    db.session.rollback()
+    return error(str(e), code=500, http_status=500)
+
+
+@kun_topic_bp.route('/<int:topic_id>/comment/like', methods=['PUT'])
+@token_required
+def like_comment(topic_id, current_user=None):
+  """
+  与前端一致：路径里的 topic_id 实际传的是 commentId。
+  """
+  try:
+    cid = _reaction_body_id('commentId', 'comment_id') or topic_id
+    msg = toggle_comment_like(current_user.id, cid)
+    return jsonify(msg)
+  except ValueError as e:
+    return error(str(e), code=400, http_status=400)
+  except SQLAlchemyError as e:
+    db.session.rollback()
+    return error(str(e), code=500, http_status=500)
 
 
 # ----- replies -----
@@ -776,16 +880,37 @@ def delete_reply(topic_id, current_user=None):
       return error('缺少 replyId 参数', code=400, http_status=400)
 
     reply = TopicReply.query.get(reply_id)
-    if not reply or reply.status == 2 or reply.topic_id != topic_id:
-      return error('回复不存在', code=404, http_status=404)
+    if not reply or reply.topic_id != topic_id:
+      return error('未找到这个回复', code=404, http_status=404)
 
     if reply.user_id != current_user.id and not _is_topic_moderator(current_user):
-      return error('没有权限删除回复', code=403, http_status=403)
+      return error('您无权删除这个回复', code=403, http_status=403)
 
-    reply.status = 2
+    cost_if_user = moemoepoint_cost_for_reply_delete(reply_id)
+    is_moderator = _is_topic_moderator(current_user)
+    cost = 3 if is_moderator else cost_if_user
+
+    if not is_moderator:
+      actor = User.query.get(current_user.id)
+      if not actor:
+        return error('未找到用户', code=404, http_status=404)
+      if (actor.moemoepoint or 0) < cost_if_user:
+        return error(
+          f'您的萌萌点不足, 删除这个回复需要 {cost_if_user} 萌萌点',
+          code=400,
+          http_status=400,
+        )
+
+    delete_topic_replies_recursive([reply_id])
+
+    author = User.query.get(reply.user_id)
+    if author:
+      author.moemoepoint = (author.moemoepoint or 0) - cost
+
     db.session.commit()
     return jsonify('MOEMOE delete reply successfully!')
   except Exception as e:
     db.session.rollback()
+    current_app.logger.exception('删除回复失败 reply_id=%s', reply_id)
     return error(str(e), code=500, http_status=500)
 

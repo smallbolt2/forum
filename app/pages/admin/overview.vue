@@ -6,7 +6,15 @@ useKunDisableSeo('数据总览')
 const days = ref(30)
 const dayOptions = [7, 30, 90, 180, 365]
 
-const { data: summaryData, status: summaryStatus } = await useFetch(
+/** Flask 统一响应为 { code, message, data }；Nitro 直连时为数组 */
+const unwrapApiData = <T>(payload: unknown): T => {
+  if (payload && typeof payload === 'object' && 'data' in payload) {
+    return (payload as { data: T }).data
+  }
+  return payload as T
+}
+
+const { data: summaryRaw, status: summaryStatus } = await useFetch(
   '/api/admin/overview/all',
   {
     method: 'GET',
@@ -14,13 +22,23 @@ const { data: summaryData, status: summaryStatus } = await useFetch(
   }
 )
 
-const { data: statsData, status: statsStatus } = await useFetch<AdminOverStats[]>(
+const { data: statsRaw, status: statsStatus } = await useFetch(
   '/api/admin/overview/stats',
   {
     method: 'GET',
     query: computed(() => ({ days: days.value })),
     ...kungalgameResponseHandler
   }
+)
+
+const summaryData = computed(() =>
+  unwrapApiData<
+    { name: string; label: string; color: string; count: number }[]
+  >(summaryRaw.value) ?? []
+)
+
+const statsData = computed(() =>
+  unwrapApiData<AdminOverStats[]>(statsRaw.value) ?? []
 )
 </script>
 
@@ -60,7 +78,7 @@ const { data: statsData, status: statsStatus } = await useFetch<AdminOverStats[]
         class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
       >
         <KunCard
-          v-for="item in summaryData || []"
+          v-for="item in summaryData"
           :key="item.name"
           :is-hoverable="false"
           :is-pressable="false"
@@ -86,7 +104,7 @@ const { data: statsData, status: statsStatus } = await useFetch<AdminOverStats[]
         name="趋势统计"
         :description="`最近 ${days} 天各类数据变化趋势`"
       />
-      <AdminOverviewChart class="mt-6" :data="statsData || []" />
+      <AdminOverviewChart class="mt-6" :data="statsData" />
     </KunCard>
   </div>
 </template>

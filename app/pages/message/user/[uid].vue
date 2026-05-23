@@ -13,7 +13,7 @@ useKunSeoMeta({
 </script>
 
 <template>
-  <div class="h-full w-full pl-3">
+  <div class="h-full min-w-0 flex-1 pl-3">
     <ClientOnly>
       <MessagePmHeader :id="uid" />
     </ClientOnly>

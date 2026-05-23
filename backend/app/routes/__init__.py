@@ -24,6 +24,8 @@ from app.routes.kun_category import kun_category_bp
 from app.routes.kun_search import kun_search_bp
 from app.routes.kun_image import kun_image_bp
 from app.routes.kun_section import kun_section_bp
+from app.routes.kun_activity import kun_activity_bp
+from app.routes.kun_message import kun_message_bp
 
 # 创建API蓝图
 api_bp = Blueprint('api', __name__)
@@ -72,4 +74,6 @@ api_bp.register_blueprint(kun_category_bp, url_prefix='/category')
 api_bp.register_blueprint(kun_search_bp, url_prefix='/search')
 api_bp.register_blueprint(kun_image_bp, url_prefix='/image')
 api_bp.register_blueprint(kun_section_bp, url_prefix='/section')
+api_bp.register_blueprint(kun_activity_bp, url_prefix='/activity')
+api_bp.register_blueprint(kun_message_bp, url_prefix='/message')
 

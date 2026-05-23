@@ -30,6 +30,7 @@ const handleNewComment = (comment: TopicComment) => {
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-1">
         <TopicFooterLike
+          :topic-id="reply.topicId"
           :reply-id="reply.id"
           :target-user-id="reply.user.id"
           :like-count="reply.likeCount"
@@ -37,6 +38,7 @@ const handleNewComment = (comment: TopicComment) => {
         />
 
         <TopicFooterDislike
+          :topic-id="reply.topicId"
           :reply-id="reply.id"
           :target-user-id="reply.user.id"
           :dislike-count="reply.dislikeCount"

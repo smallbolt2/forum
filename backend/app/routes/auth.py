@@ -229,19 +229,16 @@ def email_code_register():
         salt = secrets.token_hex(32)
         code = vmail.generate_random_code(7)
         vmail.set_verification_code(salt, email, code, ttl_sec=600)
+        vmail.log_register_verification_code(
+            current_app._get_current_object(), email, code, salt
+        )
 
         host = current_app.config.get('MAIL_HOST')
         mail_user = current_app.config.get('MAIL_USERNAME')
         mail_password = current_app.config.get('MAIL_PASSWORD')
 
         if not host or not mail_user or not mail_password:
-            if current_app.debug:
-                current_app.logger.warning(
-                    '[DEV] 未配置 SMTP，注册验证码 email=%s code=%s salt(前8)=%s',
-                    email,
-                    code,
-                    salt[:8],
-                )
+            if vmail.should_log_verification_code(current_app._get_current_object()):
                 vmail.rate_mark_sent(email, ip)
                 return jsonify(salt)
             vmail.remove_verification_code(salt, email)

@@ -69,6 +69,8 @@ class DevelopmentConfig(Config):
     """开发环境配置"""
     DEBUG = True
     SQLALCHEMY_ECHO = True
+    # 注册/发码时在终端打印验证码（也可用 KUN_LOG_VERIFICATION_CODE=1 覆盖）
+    LOG_VERIFICATION_CODE = True
 
 
 class ProductionConfig(Config):

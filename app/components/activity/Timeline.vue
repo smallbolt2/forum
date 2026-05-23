@@ -7,17 +7,34 @@ const pageData = reactive({
   limit: 50
 })
 
-const { data, status } = await useFetch('/api/activity/timeline', {
+const unwrapTimeline = (payload: unknown): { items: ActivityItem[]; totalCount: number } => {
+  const empty = { items: [] as ActivityItem[], totalCount: 0 }
+  if (!payload || typeof payload !== 'object') {
+    return empty
+  }
+  const raw =
+    'data' in payload
+      ? (payload as { data: { items?: ActivityItem[]; totalCount?: number } }).data
+      : (payload as { items?: ActivityItem[]; totalCount?: number })
+  return {
+    items: raw?.items ?? [],
+    totalCount: raw?.totalCount ?? 0
+  }
+}
+
+const { data: timelineRaw, status } = await useFetch('/api/activity/timeline', {
   method: 'GET',
   query: pageData,
   ...kungalgameResponseHandler
 })
+
+const data = computed(() => unwrapTimeline(timelineRaw.value))
 </script>
 
 <template>
   <KunCard
     :is-transparent="false"
-    v-if="data"
+    v-if="data.items.length || status !== 'pending'"
     content-class="space-y-3"
     :is-hoverable="false"
   >
@@ -26,14 +43,20 @@ const { data, status } = await useFetch('/api/activity/timeline', {
       description="动态时间线, 展示全站 话题, 回复, Game 与社区的最新 Game 资源, Game 动态, Game 讨论, Game 评论等"
     />
 
-    <div class="relative space-y-6">
+    <KunLoading v-if="status === 'pending'" />
+
+    <p v-else-if="!data.items.length" class="text-default-500 text-sm">
+      暂无动态，发布话题或回复后将显示在这里
+    </p>
+
+    <div v-else class="relative space-y-6">
       <div
         class="from-primary to-secondary absolute top-6 bottom-0 left-4 w-0.5 bg-gradient-to-b opacity-20"
       />
 
       <div
         v-for="(activity, index) in data.items"
-        :key="index"
+        :key="activity.uniqueId || index"
         class="flex items-center gap-3"
       >
         <KunAvatar v-if="activity.actor" :user="activity.actor" />

@@ -33,14 +33,11 @@ from app.models.prisma_topic_extras import (
   TopicSectionRelation,
 )
 from app.models.prisma_galgame_min import Galgame, GalgameLike, GalgameFavorite, GalgameResource
-from app.models.prisma_toolset_min import (
-  GalgameToolset,
-  GalgameToolsetResource,
-  GalgameToolsetComment,
-  GalgameToolsetPracticality,
-)
+from app.models.prisma_toolset_min import GalgameToolset, GalgameToolsetResource
 from app.utils.response import error
 from app.utils.kun_auth_cookie import get_uid_from_refresh_cookie
+from app.utils import verification_email as vmail
+from app.utils.user_purge import purge_user_for_permanent_delete
 
 
 kun_user_bp = Blueprint('kun_user', __name__)
@@ -147,16 +144,26 @@ def register():
   body: { codeSalt, name, email, password, code }
   return: AuthLoginResponseData (object)
 
-  注意：验证码校验暂未 1:1 复刻（后续接入 topic storage / db）
   """
   try:
     data = request.get_json() or {}
+    code_salt = (data.get('codeSalt') or '').strip()
     name = (data.get('name') or '').strip().lower()
     email = (data.get('email') or '').strip().lower()
     password = data.get('password') or ''
+    code = (data.get('code') or '').strip()
 
     if not name or not email or not password:
       return error('用户名、邮箱和密码不能为空', code=400, http_status=400)
+
+    if len(code_salt) != 64 or not re.fullmatch(r'[0-9a-fA-F]{64}', code_salt):
+      return error('非法的邮箱验证码', code=400, http_status=400)
+    if len(code) != 7:
+      return error('非法的邮箱验证码', code=400, http_status=400)
+
+    if not vmail.verify_verification_code(code_salt, email, code):
+      return error('非法的邮箱验证码', code=400, http_status=400)
+    vmail.remove_verification_code(code_salt, email)
 
     if User.query.filter_by(name=name).first():
       return error('您的用户名已经被使用, 请更换', code=400, http_status=400)
@@ -745,11 +752,12 @@ def user_status():
   if not user:
     return error('未找到该用户', code=404, http_status=404)
 
+  from app.routes.kun_message import user_has_new_message
+
   response_data = {
     'moemoepoints': user.moemoepoint or 0,
     'isCheckIn': (user.daily_check_in == 1),
-    # 消息系统暂未完全迁移，先返回 False
-    'hasNewMessage': False
+    'hasNewMessage': user_has_new_message(uid),
   }
   return jsonify(response_data)
 
@@ -762,66 +770,6 @@ def _actor_from_cookie():
   if not u or u.status != 0:
     return None, error('用户不存在或已被禁用', code=401, http_status=401)
   return u, None
-
-
-def _delete_single_reply_graph(reply_id: int):
-  TopicReplyTarget.query.filter(
-    (TopicReplyTarget.reply_id == reply_id)
-    | (TopicReplyTarget.target_reply_id == reply_id)
-  ).delete(synchronize_session=False)
-  TopicReplyLike.query.filter_by(topic_reply_id=reply_id).delete()
-  TopicReplyDislike.query.filter_by(topic_reply_id=reply_id).delete()
-  rep = TopicReply.query.get(reply_id)
-  if rep:
-    db.session.delete(rep)
-
-
-def _delete_topic_fully(topic_id: int):
-  rids = [r.id for r in TopicReply.query.filter_by(topic_id=topic_id).all()]
-  if rids:
-    Topic.query.filter(Topic.best_answer_id.in_(rids)).update(
-      {Topic.best_answer_id: None}, synchronize_session=False
-    )
-    Topic.query.filter(Topic.pinned_reply_id.in_(rids)).update(
-      {Topic.pinned_reply_id: None}, synchronize_session=False
-    )
-  for rid in rids:
-    _delete_single_reply_graph(rid)
-  cids = [c.id for c in TopicComment.query.filter_by(topic_id=topic_id).all()]
-  for cid in cids:
-    TopicCommentLike.query.filter_by(topic_comment_id=cid).delete()
-  TopicComment.query.filter_by(topic_id=topic_id).delete()
-  TopicTag.query.filter_by(topic_id=topic_id).delete()
-  TopicSectionRelation.query.filter_by(topic_id=topic_id).delete()
-  TopicLike.query.filter_by(topic_id=topic_id).delete()
-  TopicDislike.query.filter_by(topic_id=topic_id).delete()
-  TopicFavorite.query.filter_by(topic_id=topic_id).delete()
-  TopicUpvote.query.filter_by(topic_id=topic_id).delete()
-  top = Topic.query.get(topic_id)
-  if top:
-    db.session.delete(top)
-
-
-def _purge_user_owned_content(user_id: int):
-  for topic in list(Topic.query.filter_by(user_id=user_id).all()):
-    _delete_topic_fully(topic.id)
-  for reply in list(TopicReply.query.filter_by(user_id=user_id).all()):
-    _delete_single_reply_graph(reply.id)
-  for c in list(TopicComment.query.filter_by(user_id=user_id).all()):
-    TopicCommentLike.query.filter_by(topic_comment_id=c.id).delete()
-    db.session.delete(c)
-  TopicLike.query.filter_by(user_id=user_id).delete()
-  TopicDislike.query.filter_by(user_id=user_id).delete()
-  TopicFavorite.query.filter_by(user_id=user_id).delete()
-  TopicUpvote.query.filter_by(user_id=user_id).delete()
-  TopicReplyLike.query.filter_by(user_id=user_id).delete()
-  TopicReplyDislike.query.filter_by(user_id=user_id).delete()
-  TopicCommentLike.query.filter_by(user_id=user_id).delete()
-  for ts in list(GalgameToolset.query.filter_by(user_id=user_id).all()):
-    GalgameToolsetResource.query.filter_by(toolset_id=ts.id).delete()
-    GalgameToolsetComment.query.filter_by(toolset_id=ts.id).delete()
-    GalgameToolsetPracticality.query.filter_by(toolset_id=ts.id).delete()
-    db.session.delete(ts)
 
 
 @kun_user_bp.route('/<int:uid>/ban', methods=['PUT'])
@@ -877,12 +825,13 @@ def delete_user_permanent(uid):
     return error('不能删除一个管理员', code=400, http_status=400)
 
   try:
-    _purge_user_owned_content(target_id)
+    purge_user_for_permanent_delete(target_id)
     db.session.delete(target)
     db.session.commit()
   except SQLAlchemyError as e:
     db.session.rollback()
-    return error(str(e), code=500, http_status=500)
+    current_app.logger.exception('永久删除用户失败 user_id=%s', target_id)
+    return error('删除用户失败，请查看服务端日志', code=500, http_status=500)
 
   return jsonify('Moemoe delete user successfully!')
 
