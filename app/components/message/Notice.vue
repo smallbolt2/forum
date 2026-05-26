@@ -9,11 +9,11 @@
     <p>
       本论坛依旧是完全开源的，如果您觉得不错，可以给我们的 GitHub 项目点一个 star：
       <KunLink
-        href="https://github.com/KUN1007/kun-galgame-nuxt4"
+        href="#"
         target="_blank"
         color="primary"
       >
-        kun-galgame-nuxt4
+        
       </KunLink>
     </p>
   </div>
