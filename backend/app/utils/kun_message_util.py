@@ -30,6 +30,15 @@ def generate_room_id(uid1: int, uid2: int) -> str:
   return f'{a}-{b}'
 
 
+def _truncate_text_to_bytes(text: str | None, max_bytes: int = 233) -> str:
+  value = (text or '')
+  encoded = value.encode('utf-8', errors='ignore')
+  if len(encoded) <= max_bytes:
+    return value
+  truncated = encoded[:max_bytes]
+  return truncated.decode('utf-8', errors='ignore')
+
+
 def create_message(
   sender_id: int,
   receiver_id: int,
@@ -45,7 +54,7 @@ def create_message(
     sender_id=sender_id,
     receiver_id=receiver_id,
     type=msg_type,
-    content=(content or '')[:233],
+    content=_truncate_text_to_bytes(content, 233),
     link=link[:100],
     status='unread',
   )

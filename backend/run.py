@@ -13,5 +13,5 @@ if __name__ == '__main__':
     print("服务地址: http://localhost:5000")
     print("API地址: http://localhost:5000/api")
     print("=" * 50)
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='127.0.0.1', port=5000, debug=True)
 

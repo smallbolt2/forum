@@ -507,7 +507,7 @@ def delete_topic_permanently(topic_id, current_user=None):
 
 # ----- reactions (like/dislike/favorite/upvote) -----
 def _reaction_body_id(*keys):
-  data = request.get_json() or {}
+  data = request.get_json(silent=True) or {}
   for key in keys:
     val = data.get(key)
     if val is not None:

@@ -7,8 +7,8 @@ class Message(db.Model):
   __tablename__ = 'message'
 
   id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-  content = db.Column(db.String(233), default='')
-  link = db.Column(db.String(100), default='')
+  content = db.Column(db.Unicode(233), default='')
+  link = db.Column(db.Unicode(100), default='')
   status = db.Column(db.String(20), default='unread')
   type = db.Column(db.String(50), nullable=False)
   sender_id = db.Column(db.Integer, nullable=False)
