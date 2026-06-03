@@ -1,8 +1,13 @@
 <script setup lang="ts">
-defineProps<{
+import { useKunCopy } from '~/composables/useKunCopy'
+
+const props = defineProps<{
   title: string
   reply: TopicReply
 }>()
+
+const title = props.title
+const reply = props.reply
 
 const emits = defineEmits<{
   handleNewComment: [comment: TopicComment]
@@ -10,6 +15,55 @@ const emits = defineEmits<{
 
 const { id } = usePersistUserStore()
 const isCommentPanelVisible = ref(false)
+
+const replyLikeCount = ref(props.reply.likeCount)
+const replyDislikeCount = ref(props.reply.dislikeCount)
+const replyIsLiked = ref(props.reply.isLiked)
+const replyIsDisliked = ref(props.reply.isDisliked)
+
+watch(
+  () => props.reply.likeCount,
+  (value) => {
+    replyLikeCount.value = value
+  }
+)
+
+watch(
+  () => props.reply.dislikeCount,
+  (value) => {
+    replyDislikeCount.value = value
+  }
+)
+
+watch(
+  () => props.reply.isLiked,
+  (value) => {
+    replyIsLiked.value = value
+  }
+)
+
+watch(
+  () => props.reply.isDisliked,
+  (value) => {
+    replyIsDisliked.value = value
+  }
+)
+
+const handleReplyLikeUpdate = (payload: { isLiked: boolean; likeCount: number }) => {
+  replyIsLiked.value = payload.isLiked
+  replyLikeCount.value = payload.likeCount
+  if (payload.isLiked) {
+    replyIsDisliked.value = false
+  }
+}
+
+const handleReplyDislikeUpdate = (payload: { isDisliked: boolean; dislikeCount: number }) => {
+  replyIsDisliked.value = payload.isDisliked
+  replyDislikeCount.value = payload.dislikeCount
+  if (payload.isDisliked) {
+    replyIsLiked.value = false
+  }
+}
 
 const handleClickComment = () => {
   if (!id) {
@@ -23,6 +77,10 @@ const handleNewComment = (comment: TopicComment) => {
   emits('handleNewComment', comment)
   isCommentPanelVisible.value = false
 }
+
+const handleReplyShareCopy = () => {
+  useKunCopy(`${title}: https://www.kungal.com/topic/${reply.topicId}#k${reply.floor}`)
+}
 </script>
 
 <template>
@@ -33,16 +91,20 @@ const handleNewComment = (comment: TopicComment) => {
           :topic-id="reply.topicId"
           :reply-id="reply.id"
           :target-user-id="reply.user.id"
-          :like-count="reply.likeCount"
-          :is-liked="reply.isLiked"
+          :like-count="replyLikeCount"
+          :is-liked="replyIsLiked"
+          :is-disliked="replyIsDisliked"
+          @update-like="handleReplyLikeUpdate"
         />
 
         <TopicFooterDislike
           :topic-id="reply.topicId"
           :reply-id="reply.id"
           :target-user-id="reply.user.id"
-          :dislike-count="reply.dislikeCount"
-          :is-disliked="reply.isDisliked"
+          :dislike-count="replyDislikeCount"
+          :is-disliked="replyIsDisliked"
+          :is-liked="replyIsLiked"
+          @update-dislike="handleReplyDislikeUpdate"
         />
       </div>
 
@@ -59,11 +121,7 @@ const handleNewComment = (comment: TopicComment) => {
             variant="light"
             color="default"
             size="lg"
-            @click="
-              useKunCopy(
-                `${title}: https://www.kungal.com/topic/${reply.topicId}#k${reply.floor}`
-              )
-            "
+            @click="handleReplyShareCopy"
           >
             <KunIcon name="lucide:share-2" />
           </KunButton>

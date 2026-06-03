@@ -1,0 +1,12 @@
+Flask==3.1.0
+Flask-CORS==5.0.1
+Flask-SQLAlchemy==3.1.1
+Flask-Migrate==4.1.0
+python-dotenv==1.1.0
+pyodbc==5.2.0
+SQLAlchemy==2.0.36
+bcrypt==4.2.1
+PyJWT==2.9.0
+marshmallow==3.23.1
+markdown==3.7
+bleach==6.2.0

@@ -1,9 +1,65 @@
 <script setup lang="ts">
-defineProps<{
+import { useKunCopy } from '~/composables/useKunCopy'
+
+const props = defineProps<{
   topic: TopicDetail
 }>()
 
+const topic = props.topic
 const { id } = usePersistUserStore()
+
+const topicLikeCount = ref(props.topic.likeCount)
+const topicDislikeCount = ref(props.topic.dislikeCount)
+const topicIsLiked = ref(props.topic.isLiked)
+const topicIsDisliked = ref(props.topic.isDisliked)
+
+watch(
+  () => props.topic.likeCount,
+  (value) => {
+    topicLikeCount.value = value
+  }
+)
+
+watch(
+  () => props.topic.dislikeCount,
+  (value) => {
+    topicDislikeCount.value = value
+  }
+)
+
+watch(
+  () => props.topic.isLiked,
+  (value) => {
+    topicIsLiked.value = value
+  }
+)
+
+watch(
+  () => props.topic.isDisliked,
+  (value) => {
+    topicIsDisliked.value = value
+  }
+)
+
+const handleTopicLikeUpdate = (payload: { isLiked: boolean; likeCount: number }) => {
+  topicIsLiked.value = payload.isLiked
+  topicLikeCount.value = payload.likeCount
+  if (payload.isLiked) {
+    topicIsDisliked.value = false
+  }
+}
+
+const handleTopicDislikeUpdate = (payload: { isDisliked: boolean; dislikeCount: number }) => {
+  topicIsDisliked.value = payload.isDisliked
+  topicDislikeCount.value = payload.dislikeCount
+  if (payload.isDisliked) {
+    topicIsLiked.value = false
+  }
+}
+
+const handleTopicShareCopy = () => {
+  useKunCopy(`${topic.title}: https://www.kungal.com/topic/${topic.id}`)
+}
 </script>
 
 <template>
@@ -19,15 +75,19 @@ const { id } = usePersistUserStore()
       <TopicFooterLike
         :topic-id="topic.id"
         :target-user-id="topic.user.id"
-        :like-count="topic.likeCount"
-        :is-liked="topic.isLiked"
+        :like-count="topicLikeCount"
+        :is-liked="topicIsLiked"
+        :is-disliked="topicIsDisliked"
+        @update-like="handleTopicLikeUpdate"
       />
 
       <TopicFooterDislike
         :topic-id="topic.id"
         :target-user-id="topic.user.id"
-        :dislike-count="topic.dislikeCount"
-        :is-disliked="topic.isDisliked"
+        :dislike-count="topicDislikeCount"
+        :is-disliked="topicIsDisliked"
+        :is-liked="topicIsLiked"
+        @update-dislike="handleTopicDislikeUpdate"
       />
 
       <TopicFooterFavorite
@@ -51,11 +111,7 @@ const { id } = usePersistUserStore()
           variant="light"
           color="default"
           size="lg"
-          @click="
-            useKunCopy(
-              `${topic.title}: https://www.kungal.com/topic/${topic.id}`
-            )
-          "
+          @click="handleTopicShareCopy"
         >
           <KunIcon name="lucide:share-2" />
         </KunButton>

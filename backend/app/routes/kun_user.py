@@ -353,6 +353,32 @@ def _nsfw_cookie_mode():
   return request.cookies.get('nsfw') or request.cookies.get('kun-nsfw') or ''
 
 
+def _topic_relation_query(relation_model, uid: int, base_filter):
+  relation_topics = (
+    db.session.query(relation_model.topic_id)
+    .filter(relation_model.user_id == uid)
+    .distinct()
+    .subquery()
+  )
+  return Topic.query.join(
+    relation_topics,
+    Topic.id == relation_topics.c.topic_id,
+  ).filter(*base_filter)
+
+
+def _reply_relation_query(relation_model, uid: int):
+  relation_replies = (
+    db.session.query(relation_model.topic_reply_id)
+    .filter(relation_model.user_id == uid)
+    .distinct()
+    .subquery()
+  )
+  return TopicReply.query.join(
+    relation_replies,
+    TopicReply.id == relation_replies.c.topic_reply_id,
+  )
+
+
 def _format_replies_created_batch(replies):
   """对齐 Nitro replies.get：有楼中楼则按 target 拆条，否则用主楼 content"""
   if not replies:
@@ -421,16 +447,7 @@ def list_user_replies(uid: int):
     if rtype == 'reply_created':
       q = TopicReply.query.filter_by(user_id=uid)
     elif rtype == 'reply_like':
-      liked_ids = [
-        row[0]
-        for row in db.session.query(TopicReplyLike.topic_reply_id)
-        .filter_by(user_id=uid)
-        .distinct()
-        .all()
-      ]
-      if not liked_ids:
-        return jsonify({'replies': [], 'totalCount': 0})
-      q = TopicReply.query.filter(TopicReply.id.in_(liked_ids))
+      q = _reply_relation_query(TopicReplyLike, uid)
     else:
       return error('无效的类型参数', code=400, http_status=400)
 
@@ -484,38 +501,11 @@ def list_user_topics(uid: int):
     if ttype == 'topic':
       q = Topic.query.filter(Topic.user_id == uid, *base_filter)
     elif ttype == 'topic_like':
-      tids = [
-        row[0]
-        for row in db.session.query(TopicLike.topic_id)
-        .filter_by(user_id=uid)
-        .distinct()
-        .all()
-      ]
-      if not tids:
-        return jsonify({'topics': [], 'totalCount': 0})
-      q = Topic.query.filter(Topic.id.in_(tids), *base_filter)
+      q = _topic_relation_query(TopicLike, uid, base_filter)
     elif ttype == 'topic_upvote':
-      tids = [
-        row[0]
-        for row in db.session.query(TopicUpvote.topic_id)
-        .filter_by(user_id=uid)
-        .distinct()
-        .all()
-      ]
-      if not tids:
-        return jsonify({'topics': [], 'totalCount': 0})
-      q = Topic.query.filter(Topic.id.in_(tids), *base_filter)
+      q = _topic_relation_query(TopicUpvote, uid, base_filter)
     elif ttype == 'topic_favorite':
-      tids = [
-        row[0]
-        for row in db.session.query(TopicFavorite.topic_id)
-        .filter_by(user_id=uid)
-        .distinct()
-        .all()
-      ]
-      if not tids:
-        return jsonify({'topics': [], 'totalCount': 0})
-      q = Topic.query.filter(Topic.id.in_(tids), *base_filter)
+      q = _topic_relation_query(TopicFavorite, uid, base_filter)
     else:
       return error('无效的类型参数', code=400, http_status=400)
 
@@ -834,4 +824,3 @@ def delete_user_permanent(uid):
     return error('删除用户失败，请查看服务端日志', code=500, http_status=500)
 
   return jsonify('Moemoe delete user successfully!')
-

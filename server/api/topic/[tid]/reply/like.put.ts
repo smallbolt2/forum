@@ -20,6 +20,11 @@ export default defineEventHandler(async (event) => {
         where: {
           user_id: uid
         }
+      },
+      dislike: {
+        where: {
+          user_id: uid
+        }
       }
     }
   })
@@ -31,15 +36,17 @@ export default defineEventHandler(async (event) => {
   }
 
   const isLikedReply = reply.like.length > 0
+  const isDislikedReply = reply.dislike.length > 0
+  if (!isLikedReply && isDislikedReply) {
+    return kunError(event, '该回复已被您点踩，无法点赞')
+  }
 
   return prisma.$transaction(async (prisma) => {
     if (isLikedReply) {
-      await prisma.topic_reply_like.delete({
+      await prisma.topic_reply_like.deleteMany({
         where: {
-          user_id_topic_reply_id: {
-            user_id: uid,
-            topic_reply_id: input.replyId
-          }
+          user_id: uid,
+          topic_reply_id: input.replyId
         }
       })
     } else {
@@ -65,6 +72,13 @@ export default defineEventHandler(async (event) => {
       reply.topic_id
     )
 
-    return 'MOEMOE like reply successfully!'
+    const likeCount = await prisma.topic_reply_like.count({
+      where: { topic_reply_id: input.replyId }
+    })
+
+    return {
+      isLiked: !isLikedReply,
+      likeCount
+    }
   })
 })

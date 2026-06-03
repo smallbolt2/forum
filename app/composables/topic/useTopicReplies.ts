@@ -40,13 +40,14 @@ export const useTopicReplies = (topicId: number | Ref<number>) => {
     return newReplies
   }
 
-  const loadInitialReplies = async () => {
-    if (replies.value.length > 0) {
+  const loadInitialReplies = async (force = false) => {
+    if (replies.value.length > 0 && !force) {
       return
     }
 
     page.value = 1
     sortOrder.value = 'asc'
+    isComplete.value = false
     const initialData = await _fetchReplies(page.value, sortOrder.value)
 
     if (initialData.length < 30) {

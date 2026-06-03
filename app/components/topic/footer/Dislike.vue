@@ -7,42 +7,90 @@ const props = defineProps<{
   targetUserId: number
   dislikeCount: number
   isDisliked: boolean
+  isLiked: boolean
+}>()
+
+const emits = defineEmits<{
+  (event: 'updateDislike', payload: { isDisliked: boolean; dislikeCount: number }): void
 }>()
 
 const { id } = usePersistUserStore()
+const isLiked = ref(props.isLiked)
 const isDisliked = ref(props.isDisliked)
 const dislikeCount = ref(props.dislikeCount)
+const isDislikePending = ref(false)
+
+watch(
+  () => props.isLiked,
+  (value) => {
+    isLiked.value = value
+  }
+)
+
+watch(
+  () => props.isDisliked,
+  (value) => {
+    isDisliked.value = value
+  }
+)
+
+watch(
+  () => props.dislikeCount,
+  (value) => {
+    dislikeCount.value = value
+  }
+)
 
 const toggleDislike = async () => {
-  let res = ''
-  if (props.topicId) {
-    const result = await $fetch(`/api/topic/${props.topicId}/dislike`, {
-      method: 'PUT',
-      watch: false,
-      body: { topicId: props.topicId },
-      ...kungalgameResponseHandler
-    })
-    res = result ?? ''
-  } else {
-    const result = await $fetch(`/api/topic/${props.topicId}/reply/dislike`, {
-      method: 'PUT',
-      body: { replyId: props.replyId },
-      watch: false,
-      ...kungalgameResponseHandler
-    })
-    res = result ?? ''
+  if (isDislikePending.value) {
+    return
   }
 
-  if (res) {
-    dislikeCount.value += isDisliked.value ? -1 : 1
+  isDislikePending.value = true
+  const wasDisliked = isDisliked.value
+  let res: string | { isDisliked: boolean; dislikeCount: number } = ''
 
-    if (!isDisliked.value) {
-      useMessage(10225, 'success')
-    } else {
-      useMessage(10226, 'success')
+  try {
+    if (props.replyId) {
+      const result = await $fetch(`/api/topic/${props.topicId}/reply/dislike`, {
+        method: 'PUT',
+        body: { replyId: props.replyId },
+        watch: false,
+        ...kungalgameResponseHandler
+      })
+      res = result ?? ''
+    } else if (props.topicId) {
+      const result = await $fetch(`/api/topic/${props.topicId}/dislike`, {
+        method: 'PUT',
+        watch: false,
+        body: { topicId: props.topicId },
+        ...kungalgameResponseHandler
+      })
+      res = result ?? ''
     }
 
-    isDisliked.value = !isDisliked.value
+    if (res) {
+      if (typeof res === 'object' && res !== null && 'isDisliked' in res && 'dislikeCount' in res) {
+        isDisliked.value = res.isDisliked
+        dislikeCount.value = res.dislikeCount
+      } else {
+        dislikeCount.value += wasDisliked ? -1 : 1
+        isDisliked.value = !wasDisliked
+      }
+
+      if (isDisliked.value) {
+        isLiked.value = false
+      }
+
+      emits('updateDislike', {
+        isDisliked: isDisliked.value,
+        dislikeCount: dislikeCount.value
+      })
+
+      useMessage(wasDisliked ? 10226 : 10225, 'success')
+    }
+  } finally {
+    isDislikePending.value = false
   }
 }
 
@@ -59,6 +107,10 @@ const handleClickDislike = () => {
     useMessage(10229, 'warn')
     return
   }
+  if (isLiked.value) {
+    useMessage('您已点赞，无法点踩', 'warn')
+    return
+  }
   handleClickDislikeThrottled()
 }
 </script>
@@ -71,6 +123,7 @@ const handleClickDislike = () => {
       :color="isDisliked ? 'secondary' : 'default'"
       :size="dislikeCount ? 'md' : 'lg'"
       class-name="gap-1"
+      :disabled="isLiked"
       @click="handleClickDislike"
     >
       <KunIcon class="icon" name="lucide:thumbs-down" />

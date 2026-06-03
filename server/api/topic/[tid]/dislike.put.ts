@@ -16,6 +16,11 @@ export default defineEventHandler(async (event) => {
   const topic = await prisma.topic.findUnique({
     where: { id: input.topicId, status: { not: 1 } },
     include: {
+      like: {
+        where: {
+          user_id: uid
+        }
+      },
       dislike: {
         where: {
           user_id: uid
@@ -30,15 +35,17 @@ export default defineEventHandler(async (event) => {
     return kunError(event, '您不能给自己点踩')
   }
 
+  const isLiked = topic.like.length > 0
   const isDisliked = topic.dislike.length > 0
+  if (!isDisliked && isLiked) {
+    return kunError(event, '该话题已被您点赞，无法点踩')
+  }
 
   if (isDisliked) {
-    await prisma.topic_dislike.delete({
+    await prisma.topic_dislike.deleteMany({
       where: {
-        topic_id_user_id: {
-          user_id: uid,
-          topic_id: input.topicId
-        }
+        user_id: uid,
+        topic_id: input.topicId
       }
     })
   } else {
@@ -50,5 +57,12 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  return 'MOEMOE dislike topic successfully!'
+  const dislikeCount = await prisma.topic_dislike.count({
+    where: { topic_id: input.topicId }
+  })
+
+  return {
+    isDisliked: !isDisliked,
+    dislikeCount
+  }
 })

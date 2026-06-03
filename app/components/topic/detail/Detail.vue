@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { onMounted } from 'vue'
 import { useTopicReplies } from '~/composables/topic/useTopicReplies'
 
 const props = defineProps<{
@@ -25,6 +26,12 @@ const {
 } = useTopicReplies(props.topic.id)
 
 await loadInitialReplies()
+
+if (process.client) {
+  onMounted(async () => {
+    await loadInitialReplies(true)
+  })
+}
 
 provide('topicUserId', props.topic.user.id)
 

@@ -20,6 +20,11 @@ export default defineEventHandler(async (event) => {
         where: {
           user_id: uid
         }
+      },
+      dislike: {
+        where: {
+          user_id: uid
+        }
       }
     }
   })
@@ -31,6 +36,10 @@ export default defineEventHandler(async (event) => {
   }
 
   const isLiked = topic.like.length > 0
+  const isDisliked = topic.dislike.length > 0
+  if (!isLiked && isDisliked) {
+    return kunError(event, '该话题已被您点踩，无法点赞')
+  }
 
   return prisma.$transaction(async (prisma) => {
     if (isLiked) {
